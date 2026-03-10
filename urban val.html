@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>URBAN VAL' — Route interactive de street art</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    :root{
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --primary: #1C5EA3;
+      --primary-dark: #0E2F55;
+      --lime: #C9FF3C;
+      --spray: #5AD26B;
+      --text: #15324f;
+      --muted: #6c7e92;
+      --line: #dfe7f0;
+      --shadow: 0 12px 30px rgba(15, 47, 85, 0.10);
+      --radius-xl: 26px;
+      --radius-lg: 20px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    *{
+      box-sizing: border-box;
+    }
+
+    html, body{
+      margin:0;
+      padding:0;
+      width:100%;
+      height:100%;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body{
+      overflow:hidden;
+    }
+
+    .app{
+      display:grid;
+      grid-template-columns: 320px 1fr 360px;
+      gap:18px;
+      height:100vh;
+      padding:20px;
+    }
+
+    .panel{
+      background: var(--card);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      min-height:0;
+    }
+
+    .left-panel{
+      display:flex;
+      flex-direction:column;
+      padding:18px;
+      gap:16px;
+    }
+
+    .brand-card{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding:10px 8px 2px 4px;
+    }
+
+    .brand-logo{
+      width:72px;
+      height:72px;
+      border-radius:18px;
+      background: var(--primary);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+      overflow:hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .brand-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    .brand-text h1{
+      margin:0;
+      font-size:22px;
+      line-height:1.1;
+      color: var(--primary-dark);
+      letter-spacing: .2px;
+    }
+
+    .brand-text p{
+      margin:6px 0 0;
+      color: var(--muted);
+      font-size:15px;
+      line-height:1.35;
+    }
+
+    .intro-card{
+      background: linear-gradient(135deg, rgba(28,94,163,0.08), rgba(201,255,60,0.10));
+      border:1px solid rgba(28,94,163,0.08);
+      border-radius: 24px;
+      padding:20px;
+    }
+
+    .intro-card h2{
+      margin:0 0 10px;
+      font-size:18px;
+      color: var(--primary-dark);
+    }
+
+    .intro-card p{
+      margin:0;
+      color: var(--muted);
+      font-size:15px;
+      line-height:1.5;
+    }
+
+    .cta-row{
+      display:flex;
+      gap:12px;
+      margin-top:18px;
+    }
+
+    .btn{
+      border:none;
+      border-radius:18px;
+      padding:14px 16px;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    .btn:hover{
+      transform:translateY(-1px);
+    }
+
+    .btn-primary{
+      background: var(--lime);
+      color: var(--primary-dark);
+      flex:1;
+    }
+
+    .btn-secondary{
+      background: #eef3f8;
+      color: var(--primary-dark);
+      flex:1;
+    }
+
+    .section-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:4px;
+    }
+
+    .section-head h3{
+      margin:0;
+      font-size:17px;
+      color: var(--primary-dark);
+    }
+
+    .badge{
+      background:#eef3f8;
+      color: var(--primary);
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .checkpoint-list{
+      overflow:auto;
+      padding-right:4px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .checkpoint-card{
+      background:#f8fbff;
+      border:1px solid #e4edf6;
+      border-radius:20px;
+      padding:14px;
+      display:flex;
+      gap:12px;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    .checkpoint-card:hover{
+      border-color:#cfe0f2;
+      transform:translateY(-1px);
+    }
+
+    .checkpoint-card.active{
+      border-color: rgba(28,94,163,0.30);
+      box-shadow: 0 10px 18px rgba(28,94,163,0.08);
+      background: linear-gradient(135deg, rgba(28,94,163,0.06), rgba(201,255,60,0.08));
+    }
+
+    .checkpoint-index{
+      width:44px;
+      height:44px;
+      flex-shrink:0;
+      border-radius:14px;
+      background: var(--primary);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:800;
+      font-size:15px;
+    }
+
+    .checkpoint-card.active .checkpoint-index{
+      background: var(--lime);
+      color: var(--primary-dark);
+    }
+
+    .checkpoint-content h4{
+      margin:0 0 5px;
+      font-size:16px;
+      color: var(--primary-dark);
+    }
+
+    .checkpoint-content p{
+      margin:0;
+      font-size:14px;
+      color: var(--muted);
+      line-height:1.4;
+    }
+
+    .map-panel{
+      position:relative;
+      overflow:hidden;
+      background:#ecf2f8;
+    }
+
+    #map{
+      width:100%;
+      height:100%;
+    }
+
+    .map-overlay{
+      position:absolute;
+      left:18px;
+      top:18px;
+      right:18px;
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      pointer-events:none;
+      z-index:500;
+    }
+
+    .floating-card{
+      pointer-events:auto;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      border-radius:24px;
+      box-shadow: var(--shadow);
+      padding:18px 20px;
+      min-width:240px;
+      max-width:320px;
+    }
+
+    .floating-card h4{
+      margin:0 0 6px;
+      color: var(--primary-dark);
+      font-size:16px;
+    }
+
+    .floating-card p{
+      margin:0;
+      color: var(--muted);
+      font-size:14px;
+      line-height:1.4;
+    }
+
+    .zoom-fake{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      width:64px;
+      min-width:64px;
+      padding:12px;
+      align-items:center;
+    }
+
+    .zoom-btn{
+      width:40px;
+      height:40px;
+      border-radius:14px;
+      border:none;
+      font-size:28px;
+      line-height:1;
+      cursor:pointer;
+      background:#fff;
+      color: var(--primary-dark);
+      box-shadow: inset 0 0 0 1px #e7eef6;
+    }
+
+    .right-panel{
+      display:flex;
+      flex-direction:column;
+      padding:18px;
+      gap:16px;
+      overflow:auto;
+    }
+
+    .now-card{
+      padding:6px 2px 0;
+    }
+
+    .overline{
+      color: var(--muted);
+      font-size:15px;
+      margin:0 0 6px;
+    }
+
+    .spot-title{
+      margin:0;
+      color: var(--primary-dark);
+      font-size:23px;
+      line-height:1.15;
+    }
+
+    .preview-box{
+      margin-top:14px;
+      width:100%;
+      height:210px;
+      border-radius:24px;
+      background: linear-gradient(135deg, rgba(201,255,60,0.18), rgba(28,94,163,0.10));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: var(--primary-dark);
+      font-size:18px;
+      font-weight:800;
+      text-align:center;
+      padding:20px;
+      overflow:hidden;
+    }
+
+    .preview-box img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      border-radius:24px;
+      display:block;
+    }
+
+    .spot-desc{
+      margin:14px 0 0;
+      color: var(--muted);
+      font-size:15px;
+      line-height:1.5;
+    }
+
+    .metrics{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .metric-card{
+      background:#f8fbff;
+      border:1px solid #e4edf6;
+      border-radius:20px;
+      padding:16px;
+    }
+
+    .metric-value{
+      font-size:18px;
+      font-weight:800;
+      color: var(--primary-dark);
+      margin-bottom:4px;
+    }
+
+    .metric-label{
+      color: var(--muted);
+      font-size:14px;
+      line-height:1.35;
+    }
+
+    .info-card{
+      background: linear-gradient(135deg, rgba(28,94,163,0.06), rgba(90,210,107,0.08));
+      border:1px solid #e4edf6;
+      border-radius:24px;
+      padding:18px;
+    }
+
+    .info-card h4{
+      margin:0 0 8px;
+      font-size:16px;
+      color: var(--primary-dark);
+    }
+
+    .info-card p{
+      margin:0;
+      color: var(--muted);
+      line-height:1.5;
+      font-size:15px;
+    }
+
+    .gallery-wrap{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .gallery-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .gallery-head h4{
+      margin:0;
+      font-size:16px;
+      color: var(--primary-dark);
+    }
+
+    .gallery-count{
+      font-size:13px;
+      color: var(--primary);
+      font-weight:700;
+      background:#eef3f8;
+      padding:8px 12px;
+      border-radius:999px;
+    }
+
+    .gallery{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
+    .gallery-item{
+      border-radius:18px;
+      overflow:hidden;
+      background:#eef3f8;
+      height:108px;
+      cursor:pointer;
+      border:1px solid #e4edf6;
+    }
+
+    .gallery-item img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .nav-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .footer-note{
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.5;
+      margin-top:-4px;
+    }
+
+    .leaflet-control-zoom{
+      display:none;
+    }
+
+    .custom-div-icon{
+      background:none;
+      border:none;
+    }
+
+    .spot-marker{
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background: var(--primary);
+      border:4px solid #ffffff;
+      box-shadow: 0 6px 14px rgba(28,94,163,0.35);
+      position:relative;
+    }
+
+    .spot-marker::after{
+      content:"";
+      position:absolute;
+      inset:-7px;
+      border-radius:50%;
+      border:2px solid rgba(28,94,163,0.18);
+    }
+
+    .spot-marker.active{
+      background: var(--lime);
+      box-shadow: 0 10px 20px rgba(201,255,60,0.35);
+    }
+
+    .spot-marker.active::after{
+      border-color: rgba(201,255,60,0.45);
+    }
+
+    .user-pulse-wrap{
+      width:24px;
+      height:24px;
+      position:relative;
+    }
+
+    .user-pulse-dot{
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      background: var(--lime);
+      border:4px solid #fff;
+      box-shadow: 0 0 0 6px rgba(201,255,60,0.18);
+      position:absolute;
+      inset:0;
+      z-index:2;
+    }
+
+    .user-pulse-ring{
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background: rgba(201,255,60,0.35);
+      animation: pulse 2s infinite;
+      z-index:1;
+    }
+
+    @keyframes pulse{
+      0%{
+        transform:scale(1);
+        opacity:.8;
+      }
+      100%{
+        transform:scale(3.6);
+        opacity:0;
+      }
+    }
+
+    .image-modal{
+      position:fixed;
+      inset:0;
+      background: rgba(7, 19, 34, 0.82);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      z-index:9999;
+    }
+
+    .image-modal.open{
+      display:flex;
+    }
+
+    .modal-content{
+      width:min(900px, 100%);
+      background:#fff;
+      border-radius:28px;
+      padding:16px;
+      box-shadow: 0 18px 44px rgba(0,0,0,0.22);
+      position:relative;
+    }
+
+    .modal-content img{
+      width:100%;
+      max-height:78vh;
+      object-fit:contain;
+      display:block;
+      border-radius:18px;
+      background:#f4f7fb;
+    }
+
+    .modal-close{
+      position:absolute;
+      top:12px;
+      right:12px;
+      border:none;
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      cursor:pointer;
+      font-size:22px;
+      background:#fff;
+      box-shadow: var(--shadow);
+      color: var(--primary-dark);
+    }
+
+    @media (max-width: 1250px){
+      .app{
+        grid-template-columns: 290px 1fr 320px;
+      }
+    }
+
+    @media (max-width: 1080px){
+      body{
+        overflow:auto;
+      }
+      .app{
+        grid-template-columns:1fr;
+        height:auto;
+      }
+      .map-panel{
+        min-height:500px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel left-panel">
+      <div class="brand-card">
+        <div class="brand-logo">
+  <img src="logo.png" alt="Urban Val' logo">
+</div>
+        <div class="brand-text">
+          <h1>Urban Val'</h1>
+          <p>Route interactive de street art</p>
+        </div>
+      </div>
+
+      <div class="intro-card">
+        <h2>Aperçu du parcours</h2>
+        <p>
+          Découvrez les graffitis point par point à travers un itinéraire linéaire.
+          Chaque arrêt affiche les visuels associés, la progression de la tournée et la distance approximative.
+        </p>
+        <div class="cta-row">
+          <button class="btn btn-primary" id="startRouteBtn">Démarrer</button>
+          <button class="btn btn-secondary" id="focusRouteBtn">Voir l’itinéraire</button>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h3>Les graffitis d’arrêt</h3>
+        <div class="badge" id="totalStopsBadge">17 arrêts</div>
+      </div>
+
+      <div class="checkpoint-list" id="checkpointList"></div>
+    </aside>
+
+    <main class="panel map-panel">
+      <div id="map"></div>
+
+      <div class="map-overlay">
+        <div style="display:flex; gap:14px; align-items:flex-start;">
+          <div class="floating-card zoom-fake">
+            <button class="zoom-btn" id="zoomInBtn">+</button>
+            <button class="zoom-btn" id="zoomOutBtn">−</button>
+          </div>
+
+          <div class="floating-card">
+            <h4>Aperçu de la navigation en direct</h4>
+            <p>Marqueur GPS pulsant + parcours linéaire de graffiti.</p>
+          </div>
+        </div>
+
+        <div class="floating-card">
+          <h4>Aperçu en direct sur le parcours</h4>
+          <p>Le point utilisateur se déplace quand l’accès à la localisation est autorisé.</p>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel right-panel">
+      <div class="now-card">
+        <p class="overline">Œuvre suivante</p>
+        <h2 class="spot-title" id="spotTitle">Graffiti 01</h2>
+
+        <div class="preview-box" id="mainPreview">
+          APERÇU DE L’ART
+        </div>
+
+        <p class="spot-desc" id="spotDescription">
+          Sélectionnez un point du parcours pour afficher l’image principale et la galerie du graffiti.
+        </p>
+      </div>
+
+      <div class="metrics">
+        <div class="metric-card">
+          <div class="metric-value" id="distanceValue">0 m</div>
+          <div class="metric-label">Distance jusqu’au prochain arrêt</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="progressValue">1 / 17</div>
+          <div class="metric-label">Progression de la tournée</div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <h4>Version finale</h4>
+        <p>
+          Votre vrai parcours, vos vraies photos de graffiti, votre identité visuelle Urban Val’, et une interface claire inspirée des apps de navigation modernes.
+        </p>
+      </div>
+
+      <div class="gallery-wrap">
+        <div class="gallery-head">
+          <h4>Galerie du point sélectionné</h4>
+          <div class="gallery-count" id="galleryCount">0 image</div>
+        </div>
+        <div class="gallery" id="gallery"></div>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-secondary" id="prevBtn">Précédent</button>
+        <button class="btn btn-primary" id="nextBtn">Suivant</button>
+      </div>
+
+      <div class="footer-note">
+        Pour l’affichage GPS en direct, autorisez la localisation dans le navigateur. Le site fonctionne aussi sans GPS pour la démonstration.
+      </div>
+    </aside>
+  </div>
+
+  <div class="image-modal" id="imageModal">
+    <div class="modal-content">
+      <button class="modal-close" id="modalClose">×</button>
+      <img id="modalImg" src="" alt="Aperçu grand format">
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const spots = [
+      {
+        title: "Graffiti 01",
+        subtitle: "Arrêt 1 · Fresque d’ouverture",
+        coords: [50.3284375, 3.5146875],
+        images: ["G1", "G2", "G3"]
+      },
+      {
+        title: "Graffiti 02",
+        subtitle: "Arrêt 2 · Point mural",
+        coords: [50.3333125, 3.5168125],
+        images: ["G4"]
+      },
+      {
+        title: "Graffiti 03",
+        subtitle: "Arrêt 3 · Point mural",
+        coords: [50.3336875, 3.5176406],
+        images: ["G5"]
+      },
+      {
+        title: "Graffiti 04",
+        subtitle: "Arrêt 4 · Point mural",
+        coords: [50.3372125, 3.5194219],
+        images: ["G6"]
+      },
+      {
+        title: "Graffiti 05",
+        subtitle: "Arrêt 5 · Point mural",
+        coords: [50.3374125, 3.5204219],
+        images: ["G7"]
+      },
+      {
+        title: "Graffiti 06",
+        subtitle: "Arrêt 6 · Série d’images",
+        coords: [50.3408125, 3.5205625],
+        images: ["G8", "G9", "G10", "G11"]
+      },
+      {
+        title: "Graffiti 07",
+        subtitle: "Arrêt 7 · Duo de visuels",
+        coords: [50.3463875, 3.5168281],
+        images: ["G12", "G13"]
+      },
+      {
+        title: "Graffiti 08",
+        subtitle: "Arrêt 8 · Duo de visuels",
+        coords: [50.3502875, 3.5188594],
+        images: ["G14", "G15"]
+      },
+      {
+        title: "Graffiti 09",
+        subtitle: "Arrêt 9 · Point mural",
+        coords: [50.3511875, 3.5170625],
+        images: ["G16"]
+      },
+      {
+        title: "Graffiti 10",
+        subtitle: "Arrêt 10 · Point mural",
+        coords: [50.3525625, 3.5166719],
+        images: ["G17"]
+      },
+      {
+        title: "Graffiti 11",
+        subtitle: "Arrêt 11 · Point mural",
+        coords: [50.3541875, 3.5163125],
+        images: ["G18"]
+      },
+      {
+        title: "Graffiti 12",
+        subtitle: "Arrêt 12 · Point mural",
+        coords: [50.3548125, 3.5158125],
+        images: ["G19"]
+      },
+      {
+        title: "Graffiti 13",
+        subtitle: "Arrêt 13 · Point mural",
+        coords: [50.3583554, 3.5213478],
+        images: ["G20"]
+      },
+      {
+        title: "Graffiti 14",
+        subtitle: "Arrêt 14 · Duo de visuels",
+        coords: [50.3597079, 3.5199142],
+        images: ["G21", "G22"]
+      },
+      {
+        title: "Graffiti 15",
+        subtitle: "Arrêt 15 · Point mural",
+        coords: [50.3603125, 3.5224375],
+        images: ["G23"]
+      },
+      {
+        title: "Graffiti 16",
+        subtitle: "Arrêt 16 · Duo de visuels",
+        coords: [50.3633125, 3.5171875],
+        images: ["G24", "G25"]
+      },
+      {
+        title: "Graffiti 17",
+        subtitle: "Arrêt 17 · Point final",
+        coords: [50.3650355, 3.5183471],
+        images: ["G26"]
+      }
+    ];
+
+    let currentIndex = 0;
+    let userMarker = null;
+    let spotMarkers = [];
+
+    const checkpointList = document.getElementById("checkpointList");
+    const totalStopsBadge = document.getElementById("totalStopsBadge");
+    const spotTitle = document.getElementById("spotTitle");
+    const spotDescription = document.getElementById("spotDescription");
+    const mainPreview = document.getElementById("mainPreview");
+    const gallery = document.getElementById("gallery");
+    const galleryCount = document.getElementById("galleryCount");
+    const progressValue = document.getElementById("progressValue");
+    const distanceValue = document.getElementById("distanceValue");
+
+    totalStopsBadge.textContent = `${spots.length} arrêts`;
+
+    const map = L.map("map", {
+      zoomControl: false
+    }).setView(spots[0].coords, 14);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    const routeCoords = spots.map(spot => spot.coords);
+
+    const routeLine = L.polyline(routeCoords, {
+      color: "#1C5EA3",
+      weight: 5,
+      opacity: 0.95
+    }).addTo(map);
+
+    function fitWholeRoute() {
+      map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+    }
+
+    fitWholeRoute();
+
+    function createSpotIcon(active = false) {
+      return L.divIcon({
+        className: "custom-div-icon",
+        html: `<div class="spot-marker ${active ? "active" : ""}"></div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+    }
+
+    function createUserIcon() {
+      return L.divIcon({
+        className: "custom-div-icon",
+        html: `
+          <div class="user-pulse-wrap">
+            <div class="user-pulse-ring"></div>
+            <div class="user-pulse-dot"></div>
+          </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+    }
+
+    function buildCheckpointCards() {
+      checkpointList.innerHTML = "";
+
+      spots.forEach((spot, index) => {
+        const card = document.createElement("div");
+        card.className = "checkpoint-card";
+        card.dataset.index = index;
+
+        card.innerHTML = `
+          <div class="checkpoint-index">${String(index + 1).padStart(2, "0")}</div>
+          <div class="checkpoint-content">
+            <h4>${spot.title}</h4>
+            <p>${spot.subtitle}</p>
+          </div>
+        `;
+
+        card.addEventListener("click", () => {
+          selectSpot(index, true);
+        });
+
+        checkpointList.appendChild(card);
+      });
+    }
+
+    function buildMarkers() {
+      spotMarkers.forEach(marker => map.removeLayer(marker));
+      spotMarkers = [];
+
+      spots.forEach((spot, index) => {
+        const marker = L.marker(spot.coords, {
+          icon: createSpotIcon(index === currentIndex)
+        }).addTo(map);
+
+        marker.on("click", () => {
+          selectSpot(index, true);
+        });
+
+        spotMarkers.push(marker);
+      });
+    }
+
+    function formatDistance(meters) {
+      if (meters < 1000) {
+        return `${Math.round(meters)} m`;
+      }
+      return `${(meters / 1000).toFixed(2).replace(".", ",")} km`;
+    }
+
+    function getDistanceMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const toRad = (deg) => deg * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function updateDistanceLabel(index) {
+      if (index < spots.length - 1) {
+        const current = spots[index].coords;
+        const next = spots[index + 1].coords;
+        const dist = getDistanceMeters(current[0], current[1], next[0], next[1]);
+        distanceValue.textContent = formatDistance(dist);
+      } else {
+        distanceValue.textContent = "Arrivée";
+      }
+    }
+
+    function setMainPreview(imageName) {
+      if (!imageName) {
+        mainPreview.innerHTML = "APERÇU DE L’ART";
+        return;
+      }
+      mainPreview.innerHTML = `<img src="images/${imageName}.jpg" alt="${imageName}">`;
+    }
+
+    function buildGallery(images) {
+      gallery.innerHTML = "";
+      galleryCount.textContent = `${images.length} ${images.length > 1 ? "images" : "image"}`;
+
+      images.forEach(imgName => {
+        const item = document.createElement("div");
+        item.className = "gallery-item";
+        item.innerHTML = `<img src="images/${imgName}.jpg" alt="${imgName}">`;
+
+        item.addEventListener("click", () => {
+          openModal(`images/${imgName}.jpg`);
+        });
+
+        gallery.appendChild(item);
+      });
+    }
+
+    function updateActiveCards() {
+      const cards = document.querySelectorAll(".checkpoint-card");
+      cards.forEach(card => {
+        card.classList.toggle("active", Number(card.dataset.index) === currentIndex);
+      });
+    }
+
+    function updateActiveMarkers() {
+      spotMarkers.forEach((marker, index) => {
+        marker.setIcon(createSpotIcon(index === currentIndex));
+      });
+    }
+
+    function selectSpot(index, fly = false) {
+      currentIndex = index;
+      const spot = spots[index];
+
+      spotTitle.textContent = spot.title;
+      spotDescription.textContent = `${spot.subtitle}. ${spot.images.length > 1 ? "Cette étape contient plusieurs visuels." : "Cette étape contient un visuel principal."}`;
+      progressValue.textContent = `${index + 1} / ${spots.length}`;
+
+      setMainPreview(spot.images[0]);
+      buildGallery(spot.images);
+      updateDistanceLabel(index);
+      updateActiveCards();
+      updateActiveMarkers();
+
+      if (fly) {
+        map.flyTo(spot.coords, 17, { duration: 0.9 });
+      }
+
+      const activeCard = document.querySelector(`.checkpoint-card[data-index="${index}"]`);
+      if (activeCard) {
+        activeCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    buildCheckpointCards();
+    buildMarkers();
+    selectSpot(0, false);
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      if (currentIndex < spots.length - 1) {
+        selectSpot(currentIndex + 1, true);
+      }
+    });
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      if (currentIndex > 0) {
+        selectSpot(currentIndex - 1, true);
+      }
+    });
+
+    document.getElementById("startRouteBtn").addEventListener("click", () => {
+      selectSpot(0, true);
+    });
+
+    document.getElementById("focusRouteBtn").addEventListener("click", () => {
+      fitWholeRoute();
+    });
+
+    document.getElementById("zoomInBtn").addEventListener("click", () => {
+      map.zoomIn();
+    });
+
+    document.getElementById("zoomOutBtn").addEventListener("click", () => {
+      map.zoomOut();
+    });
+
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          if (!userMarker) {
+            userMarker = L.marker([lat, lng], {
+              icon: createUserIcon()
+            }).addTo(map);
+          } else {
+            userMarker.setLatLng([lat, lng]);
+          }
+        },
+        () => {},
+        {
+          enableHighAccuracy: true,
+          maximumAge: 5000,
+          timeout: 10000
+        }
+      );
+    }
+
+    const imageModal = document.getElementById("imageModal");
+    const modalImg = document.getElementById("modalImg");
+    const modalClose = document.getElementById("modalClose");
+
+    function openModal(src) {
+      modalImg.src = src;
+      imageModal.classList.add("open");
+    }
+
+    function closeModal() {
+      imageModal.classList.remove("open");
+      modalImg.src = "";
+    }
+
+    modalClose.addEventListener("click", closeModal);
+    imageModal.addEventListener("click", (e) => {
+      if (e.target === imageModal) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>
